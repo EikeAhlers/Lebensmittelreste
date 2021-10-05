@@ -233,7 +233,7 @@ fig_produktgruppe_chart.update_layout(
 )
 
 fig_produktgruppe_chart.update_traces(
-    legendrank=3,
+   
     selector=dict(type='bar')
 )
 
