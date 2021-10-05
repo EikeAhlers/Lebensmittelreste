@@ -136,6 +136,7 @@ st.title(":bar_chart: Lebensmittelabfall Dashboard")
 st.markdown("##")
 
 # TOP KPI's
+
 Menge_Lebensmittelabfall = int(df_selection["Menge"].sum())
 glmabfall_bu1 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[0]
 glmabfall_bu2 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[1]
@@ -171,7 +172,8 @@ uebersicht.update_layout(
 
 left_column, right_column = st.columns(2)
 with left_column:
-    st.subheader("Menge Lebensmittelabfall:")
+    st.subheader("Menge Lebensmittelabfall") 
+    st.subheader(f"{Menge_Lebensmittelabfall} kg")
 with right_column:
     st.subheader("Hier stehen zukünftig die KPIs")
     
@@ -233,7 +235,7 @@ fig_produktgruppe_chart.update_layout(
 )
 
 fig_produktgruppe_chart.update_traces(
-   
+    legendrank=3,
     selector=dict(type='bar')
 )
 
