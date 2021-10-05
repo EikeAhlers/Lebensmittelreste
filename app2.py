@@ -210,7 +210,7 @@ fig_product_Lebensmittelabfall.update_layout(
 )
 
 fig_product_Lebensmittelabfall.update_traces(
-    legendrank=3,
+    
     selector=dict(type='bar')
 )
 
