@@ -12,17 +12,13 @@ import plotly.express as px  # pip install plotly-express
 import streamlit as st  # pip install streamlit
 import plotly.graph_objects as go
 import datetime
+import numpy as np
+
 
 # emojis: https://www.webfx.com/tools/emoji-cheat-sheet/
 st.set_page_config(page_title="Lebensmittelabfall Dashboard", page_icon=":bar_chart:", layout="wide")
 
 # ---- READ EXCEL ----
-df_kennzahlen = pd.read_excel(
-        io="Lebensmittelabfall.xlsx",
-        engine="openpyxl",
-        sheet_name="Kennzahlen",
-)
-
 @st.cache
 def get_data_from_excel():
     df = pd.read_excel(
@@ -30,35 +26,54 @@ def get_data_from_excel():
         engine="openpyxl",
         sheet_name="Abfalldokumentation",
   #      skiprows=0,
-  #      usecols="A:Q",
+        usecols="A:M",
   #      nrows=1000,
     )
     # Add 'hour' column to dataframe
     
     df['date'] = df['Datum'].dt.date
-    
+
     return df
+
+def get_data_from_excel2():
+    df_kennzahlen = pd.read_excel(
+        io="Lebensmittelabfall.xlsx",
+        engine="openpyxl",
+        sheet_name="Kennzahlen",
+       # usecols="A:H",
+    )
+    
+    return df_kennzahlen
 
 
 
 df = get_data_from_excel()
 
 
-
-
-#Zeitraumfilter
-date = st.sidebar.date_input('Startdatum', datetime.date(2021,8,23))
-date2 = st.sidebar.date_input('Enddatum', datetime.date(2021,9,23))
-mask = (df['date'] >= date) & (df['date'] <= date2)
-df = df.loc[mask]
-zeitraum=date2-date
-st.sidebar.write('Zeitraum: ',zeitraum)   
+df_kennzahlen = get_data_from_excel2()
 
 
 # ---- SIDEBAR ----
-st.sidebar.header("Please Filter Here:")
+#Zeitraumfilter
+date = st.sidebar.date_input('Startdatum', datetime.date(2021,9,1))
+date2 = st.sidebar.date_input('Enddatum', datetime.date(2021,9,30))
+mask = (df['date'] >= date) & (df['date'] <= date2)
+df = df.loc[mask]
+
+zeitraum=date2-date+datetime.timedelta(days=1)
+
+weekNumber_start = date.isocalendar()[1]
+weekNumber_end = date2.isocalendar()[1]
+mask2 = (df_kennzahlen['KW'] >= weekNumber_start) & (df_kennzahlen['KW'] <= weekNumber_end)
+df_kennzahlen = df_kennzahlen.loc[mask2]
+
+st.sidebar.write('Zeitraum: ',zeitraum)
+st.sidebar.write("KW ", weekNumber_start, " - ", " KW " , weekNumber_end)   
+
+
+
 BU = st.sidebar.multiselect(
-    "Select the BU:",
+    "Filter der BUs:",
     options=df["BU"].unique(),
     default=df["BU"].unique()
 )
@@ -68,12 +83,32 @@ Symptom = st.sidebar.multiselect(
     default=df["Symptom"].unique(),
 )
 Grund = st.sidebar.multiselect(
-    "Select the Grund:",
+    "Filter zum genauen Grund:",
     options=df["Grund"].unique(),
     default=df["Grund"].unique()
 )
+
+KW = st.sidebar.multiselect(
+    "Filter zum genauen Grund:",
+    options=df_kennzahlen["KW"].unique(),
+    default=df_kennzahlen["KW"].unique()
+)
+
+
+
 df_selection = df.query(
    "BU == @BU & Symptom ==@Symptom & Grund == @Grund"
+   
+)
+# converting the date to the required format
+df['date'] = pd.to_datetime(df['date'], errors ='coerce')
+#df['date'].astype('int64').dtypes
+
+
+
+
+df_selection_kennzahlen = df_kennzahlen.query(
+   "BU == @BU & KW ==@KW"
 )
 #Sunburst Gründe
 #Definition Variable
@@ -89,109 +124,164 @@ zz = df_selection["filter_b"]
 zzz = df_selection["filter_c"]
 
 menge = df_selection["Menge"]
+
 df_sunburst = pd.DataFrame(
     dict(a=a, b=b, c=c, d=d , e=e ,f=f, g=g , z=z , zz=zz , zzz=zzz ,menge=menge)
 )
 
-gesamt_grund = px.sunburst(df_sunburst, path=['z', 'b', 'c', 'g','d','e','f'], values="menge",
-hover_name="menge",
+
+
+df_sunburst = pd.DataFrame(
+    dict(a=a, b=b, c=c, d=d , e=e ,f=f, g=g , z=z , zz=zz , zzz=zzz ,menge=menge)
+)
+
+gesamt_grund = px.sunburst(df_sunburst, path=['z', 'b', 'c','d','e','f'], values="menge",
+
 maxdepth=2
 )
-gesamt_grund.update_traces(textinfo='label+percent entry')
+gesamt_grund.update_traces(textinfo='label+percent entry',textfont_size=20,  hovertemplate=' %{value} kg',)
 gesamt_grund.update_layout(
-    margin=dict(l=20, r=350, t=40, b=40)
+    margin=dict(l=20, r=350, t=40, b=40),
+    separators=",."
 )
 
 
 bu_grund = px.sunburst(df_sunburst, path=['zz' , 'a', 'b', 'c', 'd', 'e','f'], values="menge",
-hover_name="menge",
-#hover_data={'all':False},
+
 maxdepth=2
-#template="ggplot",
+
 )
-bu_grund.update_traces(textinfo='label+percent entry')
+bu_grund.update_traces(textinfo='label+percent entry',textfont_size=20,hovertemplate=' %{value} kg')
 bu_grund.update_layout(
-    margin=dict(l=20, r=350, t=40, b=40)
+    margin=dict(l=20, r=350, t=40, b=40),
+    separators=",."
 )
 
 produkte = px.sunburst(df_sunburst, path=['zzz', 'd', 'e','f'], values="menge",
-hover_name="menge",
-#hover_data={'all':False},
 maxdepth=2
-#template="ggplot",
 )
-produkte.update_traces(textinfo='label+percent entry')
+produkte.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate=' %{value} kg',)
 produkte.update_layout(
-    margin=dict(l=20, r=350, t=40, b=40)
+    margin=dict(l=20, r=350, t=40, b=40),
+    separators=",."
+)
+
+treemap = px.treemap(df_sunburst, path=['a', 'b', 'c','d'], values="menge", color="b",
+maxdepth=2, height=500,
+)
+
+treemap.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate='Menge %{value} kg <br>Prozent Gesamt %{percentRoot:.2f}%',)
+treemap.update_layout(
+    margin=dict(l=0, r=0, t=0, b=0),
+    separators=",.",
+    
 )
 
 
 
+# treemap = px.treemap(df_selection, path=[px.Constant(""), 'BU', 'Symptom', 'Grund', 'Produktgruppe'],branchvalues="total", values='Menge',color="Symptom",maxdepth=2,
+    
+# )
+# #treemap.data[0].textinfo = 'label+text+percent entry' 
+
+# treemap.update_layout(
+#     margin = dict(t=50, l=25, r=25, b=25),
+#     separators=",.", 
+    
+    
+#     )
+# treemap.update_traces(
+#     textfont_size=20,
+#     textinfo='label+percent entry'
+# )
+
+# treemap.data[0].hovertemplate = '%{value} kg <br>%{percentRoot} '
 
 
 
 
-# ---- MAINPAGE ----
-st.title(":bar_chart: Lebensmittelabfall Dashboard")
-st.markdown("##")
+
 
 # TOP KPI's
 
 Menge_Lebensmittelabfall = int(df_selection["Menge"].sum())
-glmabfall_bu1 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[0]
-glmabfall_bu2 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[1]
-glmabfall_bu3 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[2]
-glmabfall_bu4 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[3]
-
-mlmabfall_bu1 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[0]
-mlmabfall_bu2 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[1]
-mlmabfall_bu3 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[2]
-mlmabfall_bu4 = df_kennzahlen["Gesamtlebensmittelabfallquote"].values[3]
 
 
-#average_rating = round(df_selection["Rating"].mean(), 1)
-#star_rating = ":star:" * int(round(average_rating, 0))
-#average_sale_by_transaction = round(df_selection["Menge"].mean(), 2)
-
-uebersicht = px.pie(df_selection,
-            values = "Menge",
-            names = "BU",
+# Gesamtlebensmittelabfallquote [BAR CHART]
+gesamtlebensmittelabfall = (
+    df_selection_kennzahlen.groupby(by=["KW"]).sum()[["Gesamtlebensmittelabfallquote"]].sort_values(by="Gesamtlebensmittelabfallquote")
 )
-
-uebersicht.update_traces(
-    textposition = "inside",
-    textinfo = "percent+label"
-)
-
-uebersicht.update_layout(
-    title_font_size = 42
-)
-uebersicht.update_layout(
-    margin=dict(l=20, r=300, t=20, b=0)
-)
-
-left_column, right_column = st.columns(2)
-with left_column:
-    st.subheader("Menge Lebensmittelabfall") 
-    st.subheader(f"{Menge_Lebensmittelabfall} kg")
-with right_column:
-    st.subheader("Hier stehen zukünftig die KPIs")
+gesamtlebensmittelabfall = px.bar(
+    df_selection_kennzahlen,    
+    x="KW",
+    y="Gesamtlebensmittelabfallquote",   
+    color="BU",
+    barmode='group',
+    template="plotly_white",
     
+)
+gesamtlebensmittelabfall.update_layout(
+    plot_bgcolor="rgba(0,0,0,0)",
+    xaxis=(dict(showgrid=False)),
+    separators=",."
+)
+gesamtlebensmittelabfall.update_traces(    
+    selector=dict(type='bar'),
+    hovertemplate=' %{value} %',
+    texttemplate='%{value:.2f}',
+    textposition='outside'
+   
+)
+# Maschinenabfallquote [BAR CHART]
+maschinenabfall = (
+    df_selection_kennzahlen.groupby(by=["KW"]).sum()[["Maschinenabfallquote"]].sort_values(by="Maschinenabfallquote")
+)
+maschinenabfall = px.bar(
+    df_selection_kennzahlen,    
+    x="KW",
+    y="Maschinenabfallquote", 
+    color="BU",
+    barmode='group',
+    #color_discrete_sequence=["#0083B8"] * len(maschinenabfall),
+    template="plotly_white",
+)
+maschinenabfall.update_layout(
+    plot_bgcolor="rgba(0,0,0,0)",
+    xaxis=(dict(showgrid=False)),
+    separators=",.",
+)
+maschinenabfall.update_traces(    
+    selector=dict(type='bar'),
+    hovertemplate=' %{value} %',
+    texttemplate='%{value:.2f}',
+    textposition='outside'
+)
 
-st.markdown("""---""")
 
-left_column, middle_column, right_column = st.columns(3)
-with left_column:
-    st.subheader("Aufteilung BUs")
-    st.plotly_chart(bu_grund)
-with middle_column:
-    st.subheader("Symptome und Gründe")
-    st.plotly_chart(gesamt_grund)
-with right_column:
-    st.subheader("Produktgruppen")    
-    st.plotly_chart(produkte)
+# zeitlicher Verlauf [BAR CHART]
+verlauf = (
+    df_selection.groupby(by=["KW"]).sum()[["Menge"]].sort_values(by="Menge")
+)
+verlauf = px.bar(
+    verlauf,    
+    x=verlauf.index,
+    y="Menge",
+    color_discrete_sequence=["#0083B8"] * len(verlauf),
+    template="plotly_white",
+)
+verlauf.update_layout(
+    plot_bgcolor="rgba(0,0,0,0)",
+    xaxis=(dict(showgrid=False)),
+    separators=",."
+    
+)
+verlauf.update_traces(    
+    selector=dict(type='bar'),
+    hovertemplate=' %{value} kg',
+    texttemplate='%{value}',
+    textposition='outside',
+)
 
-st.markdown("""---""")
 
 # Lebensmittelabfall BY Symptom [BAR CHART]
 Lebensmittelabfall_by_product_line = (
@@ -208,12 +298,15 @@ fig_product_Lebensmittelabfall = px.bar(
 )
 fig_product_Lebensmittelabfall.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
-    xaxis=(dict(showgrid=False))
+    xaxis=(dict(showgrid=False)),
+    separators=",."
 )
 
 fig_product_Lebensmittelabfall.update_traces(
     
-    selector=dict(type='bar')
+    selector=dict(type='bar'),
+    texttemplate='%{value:.0f}',
+    textposition='outside'
 )
 
 # Lebensmittelabfall BY Symptom [BAR CHART]
@@ -231,44 +324,25 @@ fig_produktgruppe_chart = px.bar(
 )
 fig_produktgruppe_chart.update_layout(
     plot_bgcolor="rgba(0,0,0,0)",
-    xaxis=(dict(showgrid=False))
+    xaxis=(dict(showgrid=False)),
+    separators=",.",
+    
 )
 
 fig_produktgruppe_chart.update_traces(
-    
-    selector=dict(type='bar')
+    legendrank=3,
+    selector=dict(type='bar'),
+    texttemplate='%{value:.0f}',
+    textposition='outside',
 )
+##### Treemap ####
 
-
-
-left_column, right_column = st.columns(2)
-left_column.plotly_chart(fig_produktgruppe_chart, use_container_width=True)
-right_column.plotly_chart(fig_product_Lebensmittelabfall, use_container_width=True)
-
-
+#navigation_name=["BU","Symptom"]
+#navigation=st.radio("Navigation", navigation_name)
 
 
 
 
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
-
-
-raw_data = df_selection.replace({'nein': ""})
-raw_data
 
 # ---- HIDE STREAMLIT STYLE ----
 hide_st_style = """
@@ -279,3 +353,60 @@ hide_st_style = """
             </style>
             """
 st.markdown(hide_st_style, unsafe_allow_html=True)
+
+# ---- MAINPAGE ----
+
+st.title(":bar_chart: Lebensmittelabfall Dashboard")
+st.markdown("##")
+
+st.subheader(f"Menge Lebensmittelabfall: {Menge_Lebensmittelabfall} kg")
+st.markdown("""---""")  
+left_column, right_column = st.columns(2)
+with left_column:
+    st.subheader("Gesamtüberblick")
+    st.plotly_chart(treemap)
+with right_column:
+    st.subheader("zeitlicher Verlauf")
+    st.plotly_chart(verlauf)
+
+
+st.markdown("""---""")
+
+st.title("KPIs")
+
+left_column, right_column = st.columns(2)
+with left_column:
+    st.subheader("Gesamtlebensmittelabfallquote") 
+    st.plotly_chart(gesamtlebensmittelabfall)
+with right_column:
+    st.subheader("Maschinenabfallquote")
+    st.plotly_chart(maschinenabfall)
+st.markdown("""---""")
+
+left_column, middle_column, right_column = st.columns(3)
+with left_column:
+    st.subheader("Aufteilung BUs")
+    st.plotly_chart(bu_grund)
+with middle_column:
+    st.subheader("Symptome und Gründe")
+    st.plotly_chart(gesamt_grund)
+with right_column:
+    st.subheader("Produktgruppen")    
+    st.plotly_chart(produkte)
+
+st.markdown("""---""")
+
+left_column, right_column = st.columns(2)
+left_column.plotly_chart(fig_produktgruppe_chart, use_container_width=True)
+right_column.plotly_chart(fig_product_Lebensmittelabfall, use_container_width=True)
+
+
+st.markdown("""---""")
+st.title("Rohdaten")
+raw_data = df_selection.replace({'nein': ""})
+raw_data
+
+
+
+
+
