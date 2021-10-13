@@ -89,7 +89,7 @@ Grund = st.sidebar.multiselect(
 )
 
 KW = st.sidebar.multiselect(
-    "Filter zum genauen Grund:",
+    "Auswahl der KW:",
     options=df_kennzahlen["KW"].unique(),
     default=df_kennzahlen["KW"].unique()
 )
@@ -135,7 +135,7 @@ df_sunburst = pd.DataFrame(
     dict(a=a, b=b, c=c, d=d , e=e ,f=f, g=g , z=z , zz=zz , zzz=zzz ,menge=menge)
 )
 
-gesamt_grund = px.sunburst(df_sunburst, path=['z', 'b', 'c','d','e','f'], values="menge",
+gesamt_grund = px.sunburst(df_sunburst, path=['z', 'b', 'c','g','d','e','f'], values="menge",
 
 maxdepth=2
 )
@@ -146,7 +146,7 @@ gesamt_grund.update_layout(
 )
 
 
-bu_grund = px.sunburst(df_sunburst, path=['zz' , 'a', 'b', 'c', 'd', 'e','f'], values="menge",
+bu_grund = px.sunburst(df_sunburst, path=['zz', 'a', 'd', 'e' , 'g'], values="menge",
 
 maxdepth=2
 
@@ -166,11 +166,11 @@ produkte.update_layout(
     separators=",."
 )
 
-treemap = px.treemap(df_sunburst, path=['a', 'b', 'c','d'], values="menge", color="b",
-maxdepth=2, height=500,
+treemap = px.treemap(df_sunburst, path=['a', 'b', 'c','d','e'], values="menge", color="b",
+maxdepth=3, height=500, width=1300
 )
 
-treemap.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate='Menge %{value} kg <br>Prozent Gesamt %{percentRoot:.2f}%',)
+treemap.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate='Menge %{value} kg <br>Prozent Gesamt %{percentRoot:.2f}',)
 treemap.update_layout(
     margin=dict(l=0, r=0, t=0, b=0),
     separators=",.",
@@ -216,6 +216,15 @@ gesamtlebensmittelabfall = px.bar(
     x="KW",
     y="Gesamtlebensmittelabfallquote",   
     color="BU",
+    color_discrete_map={
+        "BU1":"#EF553B",
+        "BU2":"#FFA15A",
+        "BU3":"#636EFA",
+        "BU4":"#AB63FA",    
+    }
+    
+    
+    ,
     barmode='group',
     template="plotly_white",
     
@@ -241,6 +250,12 @@ maschinenabfall = px.bar(
     x="KW",
     y="Maschinenabfallquote", 
     color="BU",
+    color_discrete_map={
+        "BU1":"#EF553B",
+        "BU2":"#FFA15A",
+        "BU3":"#636EFA",
+        "BU4":"#AB63FA",    
+    },
     barmode='group',
     #color_discrete_sequence=["#0083B8"] * len(maschinenabfall),
     template="plotly_white",
@@ -292,7 +307,7 @@ fig_product_Lebensmittelabfall = px.bar(
     x="Menge",
     y=Lebensmittelabfall_by_product_line.index,
     orientation="h",
-    title="<b>Symptome des Lebensmittelabfalls</b>",
+    
     color_discrete_sequence=["#0083B8"] * len(Lebensmittelabfall_by_product_line),
     template="plotly_white",
 )
@@ -318,7 +333,7 @@ fig_produktgruppe_chart = px.bar(
     x="Menge",
     y=produktgruppe_chart.index,
     orientation="h",
-    title="<b>Produktegruppen</b>",
+   
     color_discrete_sequence=["#0083B8"] * len(Lebensmittelabfall_by_product_line),
     template="plotly_white",
 )
@@ -362,9 +377,10 @@ st.markdown("##")
 st.subheader(f"Menge Lebensmittelabfall: {Menge_Lebensmittelabfall} kg")
 st.markdown("""---""")  
 left_column, right_column = st.columns(2)
+
 with left_column:
-    st.subheader("Gesamtüberblick")
-    st.plotly_chart(treemap)
+    st.subheader("Aufteilung BUs")
+    st.plotly_chart(bu_grund)
 with right_column:
     st.subheader("zeitlicher Verlauf")
     st.plotly_chart(verlauf)
@@ -372,34 +388,45 @@ with right_column:
 
 st.markdown("""---""")
 
+
+
+
+
 st.title("KPIs")
 
 left_column, right_column = st.columns(2)
 with left_column:
-    st.subheader("Gesamtlebensmittelabfallquote") 
+    st.subheader("Gesamtlebensmittelabfallquote in %") 
     st.plotly_chart(gesamtlebensmittelabfall)
 with right_column:
-    st.subheader("Maschinenabfallquote")
+    st.subheader("Maschinenabfallquote in %")
     st.plotly_chart(maschinenabfall)
 st.markdown("""---""")
 
-left_column, middle_column, right_column = st.columns(3)
+left_column, right_column = st.columns(2)
+
 with left_column:
-    st.subheader("Aufteilung BUs")
-    st.plotly_chart(bu_grund)
-with middle_column:
-    st.subheader("Symptome und Gründe")
-    st.plotly_chart(gesamt_grund)
+    st.subheader("Produktgruppen")
+    st.plotly_chart(fig_produktgruppe_chart)
 with right_column:
-    st.subheader("Produktgruppen")    
+    st.subheader("Produktgruppen und Produktnamen")    
     st.plotly_chart(produkte)
 
 st.markdown("""---""")
 
-left_column, right_column = st.columns(2)
-left_column.plotly_chart(fig_produktgruppe_chart, use_container_width=True)
-right_column.plotly_chart(fig_product_Lebensmittelabfall, use_container_width=True)
 
+
+with left_column:
+    st.subheader("Symptome")
+    st.plotly_chart(fig_product_Lebensmittelabfall)
+with right_column:
+    st.subheader("Symptome und Gründe")    
+    st.plotly_chart(gesamt_grund)
+
+st.markdown("""---""")
+st.subheader(f"Menge Lebensmittelabfall: {Menge_Lebensmittelabfall} kg")
+st.subheader("Gesamtüberblick")
+st.plotly_chart(treemap)
 
 st.markdown("""---""")
 st.title("Rohdaten")
