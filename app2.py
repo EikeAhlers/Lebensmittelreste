@@ -15,6 +15,7 @@ import datetime
 import numpy as np
 
 
+
 # emojis: https://www.webfx.com/tools/emoji-cheat-sheet/
 st.set_page_config(page_title="Lebensmittelabfall Dashboard", page_icon=":bar_chart:", layout="wide")
 
@@ -26,7 +27,7 @@ def get_data_from_excel():
         engine="openpyxl",
         sheet_name="Abfalldokumentation",
   #      skiprows=0,
-        usecols="A:M",
+        usecols="A:L",
   #      nrows=1000,
     )
     # Add 'hour' column to dataframe
@@ -56,7 +57,7 @@ df_kennzahlen = get_data_from_excel2()
 # ---- SIDEBAR ----
 #Zeitraumfilter
 date = st.sidebar.date_input('Startdatum', datetime.date(2021,9,1))
-date2 = st.sidebar.date_input('Enddatum', datetime.date(2021,9,30))
+date2 = st.sidebar.date_input('Enddatum', datetime.date(2021,12,31))
 mask = (df['date'] >= date) & (df['date'] <= date2)
 df = df.loc[mask]
 
