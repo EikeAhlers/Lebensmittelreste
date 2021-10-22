@@ -53,11 +53,12 @@ df = get_data_from_excel()
 
 df_kennzahlen = get_data_from_excel2()
 
+today = datetime.date.today()
 
 # ---- SIDEBAR ----
 #Zeitraumfilter
 date = st.sidebar.date_input('Startdatum', datetime.date(2021,9,1))
-date2 = st.sidebar.date_input('Enddatum', datetime.date(2021,12,31))
+date2 = st.sidebar.date_input('Enddatum', today)
 mask = (df['date'] >= date) & (df['date'] <= date2)
 df = df.loc[mask]
 
@@ -138,6 +139,7 @@ df_sunburst = pd.DataFrame(
 
 gesamt_grund = px.sunburst(df_sunburst, path=['z', 'b', 'c','g','d','e','f'], values="menge",
 
+
 maxdepth=2
 )
 gesamt_grund.update_traces(textinfo='label+percent entry',textfont_size=20,  hovertemplate=' %{value} kg',)
@@ -148,6 +150,15 @@ gesamt_grund.update_layout(
 
 
 bu_grund = px.sunburst(df_sunburst, path=['zz', 'a', 'd', 'e' , 'g'], values="menge",
+color="a",
+    color_discrete_map={
+        "BU1":"#EF553B",
+        "BU2":"#FFA15A",
+        "BU3":"#636EFA",
+        "BU4":"#AB63FA", 
+        "Verkauf":'#90ee90',
+        "Rest": '#808080'
+    },
 
 maxdepth=2
 
@@ -158,17 +169,27 @@ bu_grund.update_layout(
     separators=",."
 )
 
-produkte = px.sunburst(df_sunburst, path=['zzz', 'd', 'e','f'], values="menge",
+produkte = px.sunburst(df_sunburst, path=['zzz', 'd','e', 'b','c','f'], values="menge",
+
 maxdepth=2
 )
-produkte.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate=' %{value} kg',)
+produkte.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate='%{value} kg',)
 produkte.update_layout(
     margin=dict(l=20, r=350, t=40, b=40),
     separators=",."
 )
 
-treemap = px.treemap(df_sunburst, path=['a', 'b', 'c','d','e'], values="menge", color="b",
-maxdepth=3, height=500, width=1300
+treemap = px.treemap(df_sunburst, path=['a', 'd','b','e','f'], values="menge",
+color="a",
+    color_discrete_map={
+        "BU1":"#EF553B",
+        "BU2":"#FFA15A",
+        "BU3":"#636EFA",
+        "BU4":"#AB63FA", 
+        "Verkauf":'#90ee90',
+        "Rest": '#808080'
+    },
+maxdepth=3, height=1000, width=1300
 )
 
 treemap.update_traces(textinfo='label+percent entry',textfont_size=20, hovertemplate='Menge %{value} kg <br>Prozent Gesamt %{percentRoot:.2f}',)
@@ -376,6 +397,7 @@ st.title(":bar_chart: Lebensmittelabfall Dashboard")
 st.markdown("##")
 
 st.subheader(f"Menge Lebensmittelabfall: {Menge_Lebensmittelabfall} kg")
+st.write('Zeitraum: ',date ,'-', date2)
 st.markdown("""---""")  
 left_column, right_column = st.columns(2)
 
@@ -389,9 +411,11 @@ with right_column:
 
 st.markdown("""---""")
 
+st.subheader("Gesamtüberblick: Abteilung - Produktgruppe - Symptom - Produktname - Datum")
+st.plotly_chart(treemap)
 
 
-
+st.markdown("""---""")
 
 st.title("KPIs")
 
@@ -424,10 +448,7 @@ with right_column:
     st.subheader("Symptome und Gründe")    
     st.plotly_chart(gesamt_grund)
 
-st.markdown("""---""")
-st.subheader(f"Menge Lebensmittelabfall: {Menge_Lebensmittelabfall} kg")
-st.subheader("Gesamtüberblick")
-st.plotly_chart(treemap)
+
 
 st.markdown("""---""")
 st.title("Rohdaten")
